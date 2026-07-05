@@ -225,7 +225,7 @@ struct ImplicitTreap {
         root = merge(a, merge(b, c));
     }
 
-    // NEW FEATURE: Range Addition Update
+    // Range Addition Update
     void add_range(int l, int r, ll v) {
         Node *a, *b, *c;
         split(root, l, a, b);
@@ -234,7 +234,7 @@ struct ImplicitTreap {
         root = merge(a, merge(b, c));
     }
 
-    // NEW FEATURE: Range Assignment Update
+    // Range Assignment Update
     void set_range(int l, int r, ll v) {
         Node *a, *b, *c;
         split(root, l, a, b);
@@ -303,6 +303,72 @@ struct ImplicitTreap {
         k %= len;
         if (k < 0) k += len;
         rotate_left(l, r, len - k);
+    }
+
+    // ---------------------------------------------------------------
+    // ADDED: cut-and-paste a subarray [l, r] to start at index `pos`
+    // (pos is measured in the array AFTER the [l, r] block is removed)
+    // ---------------------------------------------------------------
+    void move_range(int l, int r, int pos) {
+        Node *a, *b, *c;
+        split(root, l, a, b);
+        split(b, r - l + 1, b, c);   // b = the block being moved
+        root = merge(a, c);          // sequence with the block removed
+
+        Node *x, *y;
+        split(root, pos, x, y);
+        root = merge(merge(x, b), y);
+    }
+
+    // ---------------------------------------------------------------
+    // ADDED: binary search on the `sum` aggregate.
+    // Returns the smallest index i such that sum(a[0..i]) >= x, or
+    // size() if no prefix reaches x. Requires values to be
+    // non-negative (so prefix sums are monotonic) -- otherwise the
+    // descent below isn't valid. O(log n).
+    // ---------------------------------------------------------------
+    int find_prefix_ge(ll x) {
+        Node* t = root;
+        ll acc = 0;      // sum of everything fully to the left of t's subtree
+        int offset = 0;  // count of elements fully to the left of t's subtree
+        while (t) {
+            push(t);
+            ll left_sum = get_sum(t->l);
+            if (acc + left_sum >= x) {
+                t = t->l;
+            } else if (acc + left_sum + t->val >= x) {
+                return offset + get_sz(t->l);
+            } else {
+                acc += left_sum + t->val;
+                offset += get_sz(t->l) + 1;
+                t = t->r;
+            }
+        }
+        return size(); // no prefix reaches x
+    }
+
+    // ---------------------------------------------------------------
+    // ADDED: binary search on the `mx` aggregate.
+    // Returns the leftmost index whose value >= x, or -1 if none
+    // exist. Works regardless of sign, no monotonicity assumption
+    // needed (just uses subtree max to prune). O(log n).
+    // ---------------------------------------------------------------
+    int find_first_value_ge(ll x) {
+        if (get_mx(root) < x) return -1;
+        Node* t = root;
+        int offset = 0;
+        while (t) {
+            push(t);
+            if (get_mx(t->l) >= x) {
+                t = t->l;
+            } else if (t->val >= x) {
+                return offset + get_sz(t->l);
+            } else {
+                offset += get_sz(t->l) + 1;
+                t = t->r;
+            }
+        }
+        return -1; // unreachable given the initial mx check
     }
 
     vector<ll> to_vector() {
